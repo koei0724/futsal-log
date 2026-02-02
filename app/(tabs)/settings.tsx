@@ -7,27 +7,28 @@ import {
   Switch,
   Pressable,
   StyleSheet,
+  Image,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { User, Palette, Bell, Shield, ChevronRight, Sun, Moon } from 'lucide-react-native'
 import type { ActivityType } from '@/lib/types'
+import { activityIconImages, activityTypeLabels } from '@/lib/activityIcons'
 import { useTheme, useColors } from '@/lib/ThemeContext'
 import { StyleConstants, type ThemeColors } from '@/constants/Colors'
 
 interface CustomIcon {
-  type: ActivityType | 'social' | 'rest'
-  emoji: string
+  type: ActivityType
   label: string
 }
 
 const defaultIcons: CustomIcon[] = [
-  { type: 'training', emoji: '⚽', label: '훈련' },
-  { type: 'match', emoji: '🏆', label: '경기' },
-  { type: 'plab', emoji: '🔥', label: '플랩' },
-  { type: 'other', emoji: '📝', label: '기타' },
+  { type: 'training', label: '훈련' },
+  { type: 'match', label: '경기' },
+  { type: 'plab', label: '플랩' },
+  { type: 'other', label: '뒷연습' },
+  { type: 'teamkakao', label: '팀카카오' },
+  { type: 'lesson', label: '개인레슨' },
 ]
-
-const availableEmojis = ['⚽', '🔶', '🏆', '🍺', '🛏️', '🎯', '💪', '🏃', '⭐', '🔥', '🎮', '📝']
 
 export default function SettingsScreen() {
   const { colorScheme, setColorScheme, isDark } = useTheme()
@@ -36,20 +37,12 @@ export default function SettingsScreen() {
 
   const [nickname, setNickname] = useState('풋살러')
   const [team, setTeam] = useState('FC 동호회')
-  const [icons, setIcons] = useState(defaultIcons)
-  const [editingIcon, setEditingIcon] = useState<string | null>(null)
+  const [icons] = useState(defaultIcons)
   const [notifications, setNotifications] = useState({
     mentions: true,
     comments: true,
     reminders: false,
   })
-
-  const handleIconChange = (type: string, emoji: string) => {
-    setIcons((prev) =>
-      prev.map((icon) => (icon.type === type ? { ...icon, emoji } : icon))
-    )
-    setEditingIcon(null)
-  }
 
   const handleSave = () => {
     console.log('[RN] Saving settings:', { nickname, team, icons, notifications })
@@ -125,50 +118,15 @@ export default function SettingsScreen() {
           </View>
 
           <Text style={styles.helpText}>
-            캘린더에 표시될 활동 아이콘을 변경할 수 있습니다
+            캘린더에 표시될 활동 아이콘입니다
           </Text>
 
           {icons.map((icon) => (
-            <View key={icon.type}>
-              <Pressable
-                onPress={() =>
-                  setEditingIcon(editingIcon === icon.type ? null : icon.type)
-                }
-                style={[
-                  styles.iconRow,
-                  editingIcon === icon.type && styles.iconRowActive,
-                ]}
-              >
-                <View style={styles.iconRowLeft}>
-                  <Text style={styles.iconEmoji}>{icon.emoji}</Text>
-                  <Text style={styles.iconLabel}>{icon.label}</Text>
-                </View>
-                <ChevronRight
-                  color={colors.mutedForeground}
-                  size={16}
-                  style={editingIcon === icon.type ? { transform: [{ rotate: '90deg' }] } : undefined}
-                />
-              </Pressable>
-
-              {editingIcon === icon.type && (
-                <View style={styles.emojiPicker}>
-                  <Text style={styles.emojiPickerLabel}>아이콘 선택</Text>
-                  <View style={styles.emojiGrid}>
-                    {availableEmojis.map((emoji) => (
-                      <Pressable
-                        key={emoji}
-                        onPress={() => handleIconChange(icon.type, emoji)}
-                        style={[
-                          styles.emojiButton,
-                          icon.emoji === emoji && styles.emojiButtonSelected,
-                        ]}
-                      >
-                        <Text style={styles.emojiButtonText}>{emoji}</Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                </View>
-              )}
+            <View key={icon.type} style={styles.iconRow}>
+              <View style={styles.iconRowLeft}>
+                <Image source={activityIconImages[icon.type]} style={styles.iconImage} />
+                <Text style={styles.iconLabel}>{icon.label}</Text>
+              </View>
             </View>
           ))}
         </View>
@@ -400,53 +358,18 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     padding: 12,
     borderRadius: 8,
   },
-  iconRowActive: {
-    backgroundColor: colors.muted,
-  },
   iconRowLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-  iconEmoji: {
-    fontSize: 24,
+  iconImage: {
+    width: 96,
+    height: 96,
   },
   iconLabel: {
     fontSize: 14,
     color: colors.foreground,
-  },
-  emojiPicker: {
-    padding: 12,
-    backgroundColor: colors.muted,
-    borderRadius: 8,
-    marginTop: 8,
-    marginBottom: 8,
-  },
-  emojiPickerLabel: {
-    fontSize: 12,
-    color: colors.mutedForeground,
-    marginBottom: 8,
-  },
-  emojiGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  emojiButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: colors.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emojiButtonSelected: {
-    backgroundColor: `${colors.primary}30`,
-    borderWidth: 2,
-    borderColor: colors.primary,
-  },
-  emojiButtonText: {
-    fontSize: 20,
   },
   switchRow: {
     flexDirection: 'row',

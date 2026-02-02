@@ -14,7 +14,9 @@ const typeLabels: Record<string, string> = {
   training: '훈련',
   match: '경기',
   plab: '플랩',
-  other: '기타',
+  other: '뒷연습',
+  teamkakao: '팀카카오',
+  lesson: '개인레슨',
 }
 
 const resultLabels: Record<string, string> = {

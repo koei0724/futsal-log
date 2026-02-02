@@ -1,5 +1,5 @@
 // Activity types for Futsal Log
-export type ActivityType = 'training' | 'match' | 'plab' | 'other'
+export type ActivityType = 'training' | 'match' | 'plab' | 'other' | 'teamkakao' | 'lesson'
 
 export interface Activity {
   id: string

@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useCallback } from 'react'
-import { View, Text, Pressable, StyleSheet, FlatList } from 'react-native'
+import { View, Text, Pressable, StyleSheet, Image } from 'react-native'
 import { ChevronLeft, ChevronRight } from 'lucide-react-native'
 import type { Activity, ActivityType } from '@/lib/types'
+import { activityIconImages, activityTypeLabels } from '@/lib/activityIcons'
 import { useColors } from '@/lib/ThemeContext'
 import { StyleConstants, type ThemeColors } from '@/constants/Colors'
 
@@ -13,13 +14,6 @@ interface CalendarProps {
 }
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
-
-const activityIcons: Record<ActivityType, string> = {
-  training: '⚽',
-  match: '🏆',
-  plab: '🔥',
-  other: '📝',
-}
 
 function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month + 1, 0).getDate()
@@ -66,18 +60,18 @@ export function Calendar({
   const today = new Date()
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 
-  const days = useMemo((): DayItem[] => {
+  const rows = useMemo((): DayItem[][] => {
     const daysInMonth = getDaysInMonth(year, month)
     const firstDay = getFirstDayOfMonth(year, month)
-    const items: DayItem[] = []
+    const allItems: DayItem[] = []
 
     for (let i = 0; i < firstDay; i++) {
-      items.push({ type: 'empty', key: `empty-${i}` })
+      allItems.push({ type: 'empty', key: `empty-${i}` })
     }
 
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-      items.push({
+      allItems.push({
         type: 'day',
         key: dateStr,
         day,
@@ -88,7 +82,20 @@ export function Calendar({
       })
     }
 
-    return items
+    // 마지막 행을 7의 배수로 패딩
+    const remainder = allItems.length % 7
+    if (remainder > 0) {
+      for (let i = 0; i < 7 - remainder; i++) {
+        allItems.push({ type: 'empty', key: `empty-end-${i}` })
+      }
+    }
+
+    // 7개씩 행으로 분할
+    const result: DayItem[][] = []
+    for (let i = 0; i < allItems.length; i += 7) {
+      result.push(allItems.slice(i, i + 7))
+    }
+    return result
   }, [year, month, activitiesByDate, todayStr, selectedDate])
 
   const prevMonth = useCallback(() => {
@@ -99,52 +106,59 @@ export function Calendar({
     setCurrentDate(new Date(year, month + 1, 1))
   }, [year, month])
 
-  const renderDay = useCallback(
-    ({ item }: { item: DayItem }) => {
-      if (item.type === 'empty') {
-        return <View style={styles.emptyDay} />
-      }
+  const renderDayCell = (item: DayItem) => {
+    if (item.type === 'empty') {
+      return <View key={item.key} style={styles.dayCell} />
+    }
 
-      const uniqueTypes = [...new Set(item.activities?.map((a) => a.type) || [])]
+    const uniqueTypes = [...new Set(item.activities?.map((a) => a.type) || [])]
+    const hasActivity = uniqueTypes.length > 0
+    const hasMatchOrPlab = uniqueTypes.includes('match') || uniqueTypes.includes('plab')
+    const hasOther = uniqueTypes.includes('other')
 
-      return (
-        <Pressable
-          onPress={() => onDateSelect(item.dateStr!)}
-          onLongPress={() => onDateLongPress(item.dateStr!)}
-          delayLongPress={500}
-          style={({ pressed }) => [
-            styles.dayButton,
-            item.isToday && styles.todayBorder,
-            item.isSelected && styles.selectedDay,
-            pressed && styles.pressedDay,
+    return (
+      <Pressable
+        key={item.key}
+        onPress={() => onDateSelect(item.dateStr!)}
+        onLongPress={() => onDateLongPress(item.dateStr!)}
+        delayLongPress={500}
+        style={({ pressed }) => [
+          styles.dayCell,
+          styles.dayButton,
+          hasActivity && { backgroundColor: `${colors.primary}10` },
+          hasOther && { backgroundColor: '#FFFEF8' },
+          hasMatchOrPlab && { backgroundColor: '#FFF8FC' },
+          item.isToday && styles.todayBorder,
+          item.isSelected && styles.selectedDay,
+          pressed && styles.pressedDay,
+        ]}
+      >
+        <Text
+          style={[
+            styles.dayText,
+            item.isToday && styles.todayText,
           ]}
         >
-          <Text
-            style={[
-              styles.dayText,
-              item.isToday && styles.todayText,
-            ]}
-          >
-            {item.day}
-          </Text>
+          {item.day}
+        </Text>
 
-          {uniqueTypes.length > 0 && (
-            <View style={styles.iconsContainer}>
-              {uniqueTypes.slice(0, 2).map((type) => (
-                <Text key={type} style={styles.activityIcon}>
-                  {activityIcons[type]}
-                </Text>
-              ))}
-              {uniqueTypes.length > 2 && (
-                <Text style={styles.moreText}>+{uniqueTypes.length - 2}</Text>
-              )}
-            </View>
-          )}
-        </Pressable>
-      )
-    },
-    [onDateSelect, onDateLongPress, styles]
-  )
+        {uniqueTypes.length > 0 && (
+          <View style={styles.iconsContainer}>
+            {uniqueTypes.slice(0, 2).map((type) => (
+              <Image
+                key={type}
+                source={activityIconImages[type]}
+                style={styles.activityIcon}
+              />
+            ))}
+            {uniqueTypes.length > 2 && (
+              <Text style={styles.moreText}>+{uniqueTypes.length - 2}</Text>
+            )}
+          </View>
+        )}
+      </Pressable>
+    )
+  }
 
   return (
     <View style={styles.container}>
@@ -164,7 +178,7 @@ export function Calendar({
       </View>
 
       {/* Weekdays */}
-      <View style={styles.weekdays}>
+      <View style={styles.row}>
         {WEEKDAYS.map((day, index) => (
           <View key={day} style={styles.weekdayCell}>
             <Text
@@ -181,30 +195,26 @@ export function Calendar({
       </View>
 
       {/* Calendar grid */}
-      <FlatList
-        data={days}
-        renderItem={renderDay}
-        keyExtractor={(item) => item.key}
-        numColumns={7}
-        scrollEnabled={false}
-        columnWrapperStyle={styles.row}
-      />
+      {rows.map((rowItems, rowIndex) => (
+        <View key={`row-${rowIndex}`} style={styles.row}>
+          {rowItems.map(renderDayCell)}
+        </View>
+      ))}
 
       {/* Legend */}
       <View style={styles.legend}>
-        {Object.entries(activityIcons).map(([type, icon]) => (
-          <View key={type} style={styles.legendItem}>
-            <Text style={styles.legendIcon}>{icon}</Text>
-            <Text style={styles.legendText}>
-              {type === 'training'
-                ? '훈련'
-                : type === 'match'
-                  ? '경기'
-                  : type === 'plab'
-                    ? '플랩'
-                    : '기타'}
-            </Text>
-          </View>
+        {(Object.keys(activityIconImages) as ActivityType[]).map((type, index, arr) => (
+          <React.Fragment key={type}>
+            <View style={styles.legendItem}>
+              <Text style={styles.legendText}>
+                {activityTypeLabels[type]}
+              </Text>
+              <Image source={activityIconImages[type]} style={styles.legendIcon} />
+            </View>
+            {index < arr.length - 1 && (
+              <Text style={styles.legendDivider}>|</Text>
+            )}
+          </React.Fragment>
         ))}
       </View>
     </View>
@@ -229,9 +239,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '700',
     color: colors.foreground,
   },
-  weekdays: {
+  row: {
     flexDirection: 'row',
-    marginBottom: 8,
   },
   weekdayCell: {
     flex: 1,
@@ -243,18 +252,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '500',
     color: colors.mutedForeground,
   },
-  row: {
-    gap: 4,
-  },
-  emptyDay: {
+  dayCell: {
     flex: 1,
-    height: 72,
-  },
-  dayButton: {
-    flex: 1,
-    height: 72,
+    height: 92,
     alignItems: 'center',
     padding: 4,
+    margin: 2,
+  },
+  dayButton: {
     borderRadius: 12,
   },
   todayBorder: {
@@ -285,7 +290,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginTop: 2,
   },
   activityIcon: {
-    fontSize: 20,
+    width: 60,
+    height: 60,
   },
   moreText: {
     fontSize: 10,
@@ -293,10 +299,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   legend: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     justifyContent: 'center',
-    gap: 16,
+    alignItems: 'center',
+    flexWrap: 'wrap',
     marginTop: 16,
+    gap: 6,
   },
   legendItem: {
     flexDirection: 'row',
@@ -304,10 +311,16 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: 4,
   },
   legendIcon: {
-    fontSize: 20,
+    width: 48,
+    height: 48,
   },
   legendText: {
-    fontSize: 12,
+    fontSize: 14,
+    fontWeight: '500',
     color: colors.mutedForeground,
+  },
+  legendDivider: {
+    fontSize: 16,
+    color: colors.border,
   },
 })

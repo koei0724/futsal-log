@@ -1,16 +1,17 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import {
   View,
   Text,
   Pressable,
   TextInput,
-  ScrollView,
   StyleSheet,
-  Dimensions,
+  Platform,
+  useWindowDimensions,
 } from 'react-native'
 import { Play, Pause, MessageCircle, Send, Volume2, VolumeX } from 'lucide-react-native'
 import type { VideoComment } from '@/lib/types'
-import { Colors } from '@/constants/Colors'
+import { useColors } from '@/lib/ThemeContext'
+import type { ThemeColors } from '@/constants/Colors'
 
 interface VideoPlayerProps {
   videoUrl: string
@@ -31,6 +32,8 @@ function getYouTubeId(url: string): string | null {
 }
 
 export function VideoPlayer({ videoUrl, comments, onAddComment }: VideoPlayerProps) {
+  const colors = useColors()
+  const { width: windowWidth } = useWindowDimensions()
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration] = useState(300)
@@ -39,9 +42,12 @@ export function VideoPlayer({ videoUrl, comments, onAddComment }: VideoPlayerPro
   const [commentText, setCommentText] = useState('')
   const [activeComment, setActiveComment] = useState<VideoComment | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const progressBarRef = useRef<View>(null)
 
   const youtubeId = getYouTubeId(videoUrl)
-  const screenWidth = Dimensions.get('window').width - 32
+  const containerWidth = Math.min(windowWidth, 480) - 32
+
+  const styles = createStyles(colors)
 
   useEffect(() => {
     if (isPlaying) {
@@ -93,14 +99,28 @@ export function VideoPlayer({ videoUrl, comments, onAddComment }: VideoPlayerPro
     setIsPlaying(false)
   }
 
+  const handleProgressPress = useCallback((e: any) => {
+    if (Platform.OS === 'web') {
+      // On web, use getBoundingClientRect for accurate position
+      const rect = (e.target as HTMLElement).getBoundingClientRect()
+      const locationX = e.nativeEvent.pageX - rect.left
+      const percent = locationX / rect.width
+      setCurrentTime(Math.floor(Math.max(0, Math.min(1, percent)) * duration))
+    } else {
+      const { locationX } = e.nativeEvent
+      const percent = locationX / (containerWidth - 24)
+      setCurrentTime(Math.floor(percent * duration))
+    }
+  }, [containerWidth, duration])
+
   const progress = (currentTime / duration) * 100
 
   return (
     <View style={styles.container}>
       {/* Video Container */}
-      <View style={[styles.videoContainer, { width: screenWidth }]}>
+      <View style={[styles.videoContainer, { width: containerWidth }]}>
         <View style={styles.videoPlaceholder}>
-          <Play color={Colors.primary} size={48} />
+          <Play color={colors.primary} size={48} />
           <Text style={styles.placeholderText}>
             {youtubeId ? 'YouTube 영상' : '영상 미리보기'}
           </Text>
@@ -119,12 +139,9 @@ export function VideoPlayer({ videoUrl, comments, onAddComment }: VideoPlayerPro
         {/* Progress bar */}
         <View style={styles.progressContainer}>
           <Pressable
+            ref={progressBarRef}
             style={styles.progressBar}
-            onPress={(e) => {
-              const { locationX } = e.nativeEvent
-              const percent = locationX / (screenWidth - 24)
-              setCurrentTime(Math.floor(percent * duration))
-            }}
+            onPress={handleProgressPress}
           >
             <View style={[styles.progressFill, { width: `${progress}%` }]} />
 
@@ -139,7 +156,7 @@ export function VideoPlayer({ videoUrl, comments, onAddComment }: VideoPlayerPro
                   style={[
                     styles.commentDot,
                     { left: `${position}%` },
-                    { backgroundColor: isMyComment ? Colors.primary : Colors.mutedForeground },
+                    { backgroundColor: isMyComment ? colors.primary : colors.mutedForeground },
                   ]}
                 />
               )
@@ -152,44 +169,44 @@ export function VideoPlayer({ videoUrl, comments, onAddComment }: VideoPlayerPro
           <View style={styles.leftButtons}>
             <Pressable style={styles.iconButton} onPress={togglePlay}>
               {isPlaying ? (
-                <Pause color={Colors.foreground} size={20} />
+                <Pause color={colors.foreground} size={20} />
               ) : (
-                <Play color={Colors.foreground} size={20} />
+                <Play color={colors.foreground} size={20} />
               )}
             </Pressable>
 
             <Pressable style={styles.iconButton} onPress={() => setIsMuted(!isMuted)}>
               {isMuted ? (
-                <VolumeX color={Colors.foreground} size={20} />
+                <VolumeX color={colors.foreground} size={20} />
               ) : (
-                <Volume2 color={Colors.foreground} size={20} />
+                <Volume2 color={colors.foreground} size={20} />
               )}
             </Pressable>
           </View>
 
-          <Pressable style={styles.commentButton} onPress={handleAddComment}>
-            <MessageCircle color={Colors.foreground} size={16} />
-            <Text style={styles.commentButtonText}>{formatTime(currentTime)}에 댓글</Text>
+          <Pressable style={[styles.commentButton, { borderColor: colors.border }]} onPress={handleAddComment}>
+            <MessageCircle color={colors.foreground} size={16} />
+            <Text style={[styles.commentButtonText, { color: colors.foreground }]}>{formatTime(currentTime)}에 댓글</Text>
           </Pressable>
         </View>
 
         {/* Comment input */}
         {showCommentInput && (
-          <View style={styles.commentInputContainer}>
-            <Text style={styles.commentInputLabel}>
-              <Text style={styles.timeAccent}>{formatTime(currentTime)}</Text>에 댓글 추가
+          <View style={[styles.commentInputContainer, { backgroundColor: colors.muted }]}>
+            <Text style={[styles.commentInputLabel, { color: colors.mutedForeground }]}>
+              <Text style={[styles.timeAccent, { color: colors.primary }]}>{formatTime(currentTime)}</Text>에 댓글 추가
             </Text>
             <View style={styles.commentInputRow}>
               <TextInput
-                style={styles.commentInput}
+                style={[styles.commentInput, { backgroundColor: colors.card, color: colors.foreground }]}
                 placeholder="피드백을 입력하세요..."
-                placeholderTextColor={Colors.mutedForeground}
+                placeholderTextColor={colors.mutedForeground}
                 value={commentText}
                 onChangeText={setCommentText}
                 onSubmitEditing={handleSubmitComment}
               />
-              <Pressable style={styles.sendButton} onPress={handleSubmitComment}>
-                <Send color={Colors.primaryForeground} size={16} />
+              <Pressable style={[styles.sendButton, { backgroundColor: colors.primary }]} onPress={handleSubmitComment}>
+                <Send color={colors.primaryForeground} size={16} />
               </Pressable>
             </View>
           </View>
@@ -198,18 +215,18 @@ export function VideoPlayer({ videoUrl, comments, onAddComment }: VideoPlayerPro
 
       {/* Active comment popup */}
       {activeComment && (
-        <View style={styles.activeCommentPopup}>
+        <View style={[styles.activeCommentPopup, { backgroundColor: colors.card, borderColor: `${colors.primary}50` }]}>
           <View style={styles.activeCommentHeader}>
             <View>
-              <Text style={styles.activeCommentMeta}>
-                <Text style={styles.timeAccent}>{formatTime(activeComment.timestamp)}</Text>
+              <Text style={[styles.activeCommentMeta, { color: colors.mutedForeground }]}>
+                <Text style={[styles.timeAccent, { color: colors.primary }]}>{formatTime(activeComment.timestamp)}</Text>
                 {' - '}
-                <Text style={styles.authorName}>{activeComment.authorName}</Text>
+                <Text style={[styles.authorName, { color: colors.foreground }]}>{activeComment.authorName}</Text>
               </Text>
-              <Text style={styles.activeCommentContent}>{activeComment.content}</Text>
+              <Text style={[styles.activeCommentContent, { color: colors.foreground }]}>{activeComment.content}</Text>
             </View>
             <Pressable onPress={() => setActiveComment(null)}>
-              <Text style={styles.closeButtonText}>닫기</Text>
+              <Text style={[styles.closeButtonText, { color: colors.mutedForeground }]}>닫기</Text>
             </Pressable>
           </View>
         </View>
@@ -217,7 +234,7 @@ export function VideoPlayer({ videoUrl, comments, onAddComment }: VideoPlayerPro
 
       {/* Comments List */}
       <View style={styles.commentsList}>
-        <Text style={styles.commentsTitle}>타임라인 댓글 ({comments.length})</Text>
+        <Text style={[styles.commentsTitle, { color: colors.foreground }]}>타임라인 댓글 ({comments.length})</Text>
 
         {comments.length > 0 ? (
           [...comments]
@@ -228,28 +245,33 @@ export function VideoPlayer({ videoUrl, comments, onAddComment }: VideoPlayerPro
                 onPress={() => handleCommentDotPress(comment)}
                 style={[
                   styles.commentItem,
-                  comment.authorId === 'me' && styles.myCommentItem,
+                  { backgroundColor: colors.muted },
+                  comment.authorId === 'me' && {
+                    backgroundColor: `${colors.primary}15`,
+                    borderWidth: 1,
+                    borderColor: `${colors.primary}30`,
+                  },
                 ]}
               >
                 <View style={styles.commentItemHeader}>
-                  <Text style={styles.commentTimestamp}>{formatTime(comment.timestamp)}</Text>
-                  <Text style={styles.commentAuthor}>{comment.authorName}</Text>
+                  <Text style={[styles.commentTimestamp, { color: colors.primary }]}>{formatTime(comment.timestamp)}</Text>
+                  <Text style={[styles.commentAuthor, { color: colors.mutedForeground }]}>{comment.authorName}</Text>
                 </View>
-                <Text style={styles.commentContent}>{comment.content}</Text>
+                <Text style={[styles.commentContent, { color: colors.foreground }]}>{comment.content}</Text>
                 {comment.mentions && comment.mentions.length > 0 && (
-                  <Text style={styles.mentions}>@{comment.mentions.join(' @')}</Text>
+                  <Text style={[styles.mentions, { color: colors.secondary }]}>@{comment.mentions.join(' @')}</Text>
                 )}
               </Pressable>
             ))
         ) : (
-          <Text style={styles.emptyComments}>아직 댓글이 없습니다</Text>
+          <Text style={[styles.emptyComments, { color: colors.mutedForeground }]}>아직 댓글이 없습니다</Text>
         )}
       </View>
     </View>
   )
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     width: '100%',
   },
@@ -264,11 +286,11 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.muted,
+    backgroundColor: colors.muted,
   },
   placeholderText: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     marginTop: 8,
   },
   timeOverlay: {
@@ -286,7 +308,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   controls: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 8,
     padding: 12,
     marginTop: 8,
@@ -296,14 +318,14 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     height: 8,
-    backgroundColor: Colors.muted,
+    backgroundColor: colors.muted,
     borderRadius: 4,
     position: 'relative',
   },
   progressFill: {
     position: 'absolute',
     height: '100%',
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 4,
   },
   commentDot: {
@@ -313,7 +335,7 @@ const styles = StyleSheet.create({
     height: 12,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: Colors.card,
+    borderColor: colors.card,
     transform: [{ translateX: -6 }, { translateY: -2 }],
   },
   buttonRow: {
@@ -340,26 +362,21 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
   commentButtonText: {
     fontSize: 12,
-    color: Colors.foreground,
   },
   commentInputContainer: {
     marginTop: 12,
     padding: 12,
-    backgroundColor: Colors.muted,
     borderRadius: 8,
   },
   commentInputLabel: {
     fontSize: 12,
-    color: Colors.mutedForeground,
     marginBottom: 8,
   },
   timeAccent: {
     fontFamily: 'monospace',
-    color: Colors.primary,
   },
   commentInputRow: {
     flexDirection: 'row',
@@ -367,17 +384,14 @@ const styles = StyleSheet.create({
   },
   commentInput: {
     flex: 1,
-    backgroundColor: Colors.card,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
-    color: Colors.foreground,
   },
   sendButton: {
     width: 40,
     height: 40,
-    backgroundColor: Colors.primary,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
@@ -385,10 +399,8 @@ const styles = StyleSheet.create({
   activeCommentPopup: {
     marginTop: 8,
     padding: 12,
-    backgroundColor: Colors.card,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: `${Colors.primary}50`,
   },
   activeCommentHeader: {
     flexDirection: 'row',
@@ -397,20 +409,16 @@ const styles = StyleSheet.create({
   },
   activeCommentMeta: {
     fontSize: 12,
-    color: Colors.mutedForeground,
   },
   authorName: {
-    color: Colors.foreground,
     fontWeight: '500',
   },
   activeCommentContent: {
     fontSize: 14,
-    color: Colors.foreground,
     marginTop: 4,
   },
   closeButtonText: {
     fontSize: 12,
-    color: Colors.mutedForeground,
   },
   commentsList: {
     marginTop: 16,
@@ -418,19 +426,12 @@ const styles = StyleSheet.create({
   commentsTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.foreground,
     marginBottom: 12,
   },
   commentItem: {
     padding: 12,
-    backgroundColor: Colors.muted,
     borderRadius: 8,
     marginBottom: 8,
-  },
-  myCommentItem: {
-    backgroundColor: `${Colors.primary}15`,
-    borderWidth: 1,
-    borderColor: `${Colors.primary}30`,
   },
   commentItemHeader: {
     flexDirection: 'row',
@@ -441,24 +442,19 @@ const styles = StyleSheet.create({
   commentTimestamp: {
     fontSize: 12,
     fontFamily: 'monospace',
-    color: Colors.primary,
   },
   commentAuthor: {
     fontSize: 12,
-    color: Colors.mutedForeground,
   },
   commentContent: {
     fontSize: 14,
-    color: Colors.foreground,
   },
   mentions: {
     fontSize: 12,
-    color: Colors.secondary,
     marginTop: 4,
   },
   emptyComments: {
     fontSize: 14,
-    color: Colors.mutedForeground,
     textAlign: 'center',
     paddingVertical: 16,
   },

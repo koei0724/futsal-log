@@ -2,9 +2,9 @@ import React, { useState, useMemo, useCallback, useRef } from 'react'
 import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
-import BottomSheet, { BottomSheetView, BottomSheetScrollView } from '@gorhom/bottom-sheet'
 import { X } from 'lucide-react-native'
 import { Calendar, ActivityCard, FloatingButton } from '@/components/futsal'
+import { BottomSheetWrapper, type BottomSheetWrapperRef } from '@/components/ui/BottomSheetWrapper'
 import { mockActivities, mockMonthlyStats } from '@/lib/mock-data'
 import { useColors, useTheme } from '@/lib/ThemeContext'
 import { StyleConstants, type ThemeColors } from '@/constants/Colors'
@@ -15,7 +15,7 @@ export default function HomeScreen() {
   const { isDark } = useTheme()
   const styles = createStyles(colors, isDark)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
-  const bottomSheetRef = useRef<BottomSheet>(null)
+  const bottomSheetRef = useRef<BottomSheetWrapperRef>(null)
 
   const selectedActivities = useMemo(() => {
     if (!selectedDate) return []
@@ -99,14 +99,11 @@ export default function HomeScreen() {
       <FloatingButton href="/record/new" />
 
       {/* Bottom Sheet for selected date */}
-      <BottomSheet
+      <BottomSheetWrapper
         ref={bottomSheetRef}
-        index={-1}
         snapPoints={['50%']}
-        enablePanDownToClose
         onClose={() => setSelectedDate(null)}
-        backgroundStyle={styles.bottomSheetBackground}
-        handleIndicatorStyle={styles.bottomSheetIndicator}
+        scrollable
       >
         {selectedDate && (
           <>
@@ -117,9 +114,7 @@ export default function HomeScreen() {
               </Pressable>
             </View>
 
-            <BottomSheetScrollView
-              contentContainerStyle={styles.sheetContent}
-            >
+            <View style={styles.sheetContent}>
               {selectedActivities.length > 0 ? (
                 <View style={styles.activitiesList}>
                   {selectedActivities.map((activity) => (
@@ -137,10 +132,10 @@ export default function HomeScreen() {
                   </Pressable>
                 </View>
               )}
-            </BottomSheetScrollView>
+            </View>
           </>
         )}
-      </BottomSheet>
+      </BottomSheetWrapper>
     </SafeAreaView>
   )
 }
@@ -193,13 +188,6 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create
     flex: 1,
     paddingHorizontal: 16,
     paddingVertical: 16,
-  },
-  bottomSheetBackground: {
-    backgroundColor: colors.card,
-    borderRadius: StyleConstants.borderRadius.card,
-  },
-  bottomSheetIndicator: {
-    backgroundColor: colors.mutedForeground,
   },
   sheetHeader: {
     flexDirection: 'row',

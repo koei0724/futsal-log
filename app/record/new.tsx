@@ -6,14 +6,15 @@ import {
   Pressable,
   TextInput,
   StyleSheet,
-  KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { ArrowLeft, MapPin } from 'lucide-react-native'
-import DateTimePicker from '@react-native-community/datetimepicker'
+import { DatePicker } from '@/components/ui/DatePicker'
 import type { ActivityType } from '@/lib/types'
+import { activityIconImages } from '@/lib/activityIcons'
 import { useColors, useTheme } from '@/lib/ThemeContext'
 import { StyleConstants, type ThemeColors } from '@/constants/Colors'
 
@@ -24,11 +25,14 @@ export default function NewRecordScreen() {
   const { isDark } = useTheme()
   const styles = createStyles(colors, isDark)
 
-  // 파스텔 활동 유형 색상
-  const activityTypes: { type: ActivityType; label: string; icon: string; color: string; bgColor: string }[] = [
-    { type: 'training', label: '훈련', icon: '⚽', color: colors.training, bgColor: `${colors.training}30` },
-    { type: 'match', label: '경기', icon: '🏆', color: colors.match, bgColor: `${colors.match}30` },
-    { type: 'plab', label: '플랩', icon: '🔥', color: colors.plab, bgColor: `${colors.plab}30` },
+  // 활동 유형별 배경색/테두리: 블루 / 핑크 / 옐로
+  const activityTypes: { type: ActivityType; label: string; borderColor: string; bgColor: string }[] = [
+    { type: 'training', label: '훈련', borderColor: '#93C5FD', bgColor: '#93C5FD18' },
+    { type: 'match', label: '경기', borderColor: '#F9A8D4', bgColor: '#FFF8FC' },
+    { type: 'plab', label: '플랩', borderColor: '#F9A8D4', bgColor: '#FFF8FC' },
+    { type: 'other', label: '뒷연습', borderColor: '#FDE68A', bgColor: '#FFFEF8' },
+    { type: 'teamkakao', label: '팀카카오', borderColor: '#93C5FD', bgColor: '#93C5FD18' },
+    { type: 'lesson', label: '개인레슨', borderColor: '#93C5FD', bgColor: '#93C5FD18' },
   ]
 
   const matchTypes = [
@@ -95,12 +99,16 @@ export default function NewRecordScreen() {
     return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`
   }
 
+  // On web, use a plain View instead of KeyboardAvoidingView
+  const ContentWrapper = Platform.OS === 'web' ? View : require('react-native').KeyboardAvoidingView
+
+  const contentWrapperProps = Platform.OS === 'web'
+    ? { style: { flex: 1 } }
+    : { behavior: Platform.OS === 'ios' ? 'padding' as const : 'height' as const, style: { flex: 1 } }
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
+      <ContentWrapper {...contentWrapperProps}>
         {/* Header */}
         <View style={styles.header}>
           <Pressable onPress={() => router.back()} style={styles.backButton}>
@@ -126,11 +134,11 @@ export default function NewRecordScreen() {
                   style={[
                     styles.activityTypeButton,
                     activityType === item.type
-                      ? { borderColor: item.color, backgroundColor: item.bgColor }
+                      ? { borderColor: item.borderColor, backgroundColor: item.bgColor }
                       : { borderColor: colors.border, backgroundColor: colors.card },
                   ]}
                 >
-                  <Text style={styles.activityTypeIcon}>{item.icon}</Text>
+                  <Image source={activityIconImages[item.type]} style={styles.activityTypeIcon} />
                   <Text style={styles.activityTypeLabel}>{item.label}</Text>
                 </Pressable>
               ))}
@@ -150,16 +158,12 @@ export default function NewRecordScreen() {
                 <Text style={styles.dateText}>{formatDate(date)}</Text>
               </Pressable>
               {showDatePicker && (
-                <DateTimePicker
+                <DatePicker
                   value={date}
-                  mode="date"
-                  display="default"
-                  onChange={(event, selectedDate) => {
-                    setShowDatePicker(Platform.OS === 'ios')
-                    if (selectedDate) {
-                      setDate(selectedDate)
-                    }
+                  onChange={(selectedDate) => {
+                    setDate(selectedDate)
                   }}
+                  onClose={() => setShowDatePicker(false)}
                 />
               )}
             </View>
@@ -520,7 +524,7 @@ export default function NewRecordScreen() {
             <Text style={styles.submitButtonText}>기록 저장</Text>
           </Pressable>
         </ScrollView>
-      </KeyboardAvoidingView>
+      </ContentWrapper>
     </SafeAreaView>
   )
 }
@@ -574,7 +578,8 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create
     borderWidth: 2,
   },
   activityTypeIcon: {
-    fontSize: 24,
+    width: 84,
+    height: 84,
     marginBottom: 4,
   },
   activityTypeLabel: {

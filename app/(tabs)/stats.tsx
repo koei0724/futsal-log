@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import { View, Text, ScrollView, StyleSheet, Dimensions } from 'react-native'
+import { View, Text, ScrollView, StyleSheet, useWindowDimensions } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Trophy, Target, Activity, TrendingUp } from 'lucide-react-native'
 import { PieChart, BarChart, LineChart } from 'react-native-gifted-charts'
@@ -7,20 +7,19 @@ import { mockActivities } from '@/lib/mock-data'
 import { useColors, useTheme } from '@/lib/ThemeContext'
 import { StyleConstants, type ThemeColors } from '@/constants/Colors'
 
-const screenWidth = Dimensions.get('window').width
-
 export default function StatsScreen() {
   const colors = useColors()
   const { isDark } = useTheme()
-  const styles = createStyles(colors, isDark)
+  const { width: screenWidth } = useWindowDimensions()
+  const styles = createStyles(colors, isDark, screenWidth)
 
   // 파스텔 차트 색상
   const CHART_COLORS = {
     primary: colors.primary,
-    secondary: '#A0C4E8',        // 소프트 블루
-    training: colors.training,   // 피치
-    match: colors.match,         // 민트 그린
-    plab: colors.plab,           // 라벤더
+    secondary: '#93C5FD',        // 파스텔 블루
+    training: colors.training,   // 파스텔 옐로
+    match: colors.match,         // 파스텔 그린
+    plab: colors.plab,           // 파스텔 바이올렛
   }
 
   const stats = useMemo(() => {
@@ -93,6 +92,9 @@ export default function StatsScreen() {
     }))
   }, [CHART_COLORS])
 
+  // Clamp chart width for responsive layout
+  const chartWidth = Math.min(screenWidth, 480) - 80
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
@@ -139,7 +141,7 @@ export default function StatsScreen() {
           <View style={styles.summaryCard}>
             <View style={styles.summaryHeader}>
               <View style={[styles.iconBox, { backgroundColor: `${CHART_COLORS.training}30` }]}>
-                <Target color="#E8A87C" size={16} />
+                <Target color="#D97706" size={16} />
               </View>
               <Text style={styles.summaryLabel}>평균 노력도</Text>
             </View>
@@ -197,7 +199,7 @@ export default function StatsScreen() {
           <View style={styles.chartContainer}>
             <LineChart
               data={effortData}
-              width={screenWidth - 80}
+              width={chartWidth}
               height={180}
               color={CHART_COLORS.training}
               thickness={3}
@@ -223,7 +225,7 @@ export default function StatsScreen() {
           <View style={styles.chartContainer}>
             <BarChart
               data={goalsData}
-              width={screenWidth - 80}
+              width={chartWidth}
               height={180}
               barWidth={20}
               spacing={24}
@@ -265,7 +267,7 @@ export default function StatsScreen() {
           </View>
 
           <View style={[styles.highlightItem, { backgroundColor: `${CHART_COLORS.training}30`, borderColor: `${CHART_COLORS.training}60` }]}>
-            <Text style={[styles.highlightLabel, { color: '#E8A87C' }]}>개선 필요</Text>
+            <Text style={[styles.highlightLabel, { color: '#D97706' }]}>개선 필요</Text>
             <Text style={styles.highlightText}>후반 체력 저하 - 인터벌 트레이닝 필요</Text>
           </View>
         </View>
@@ -276,7 +278,7 @@ export default function StatsScreen() {
   )
 }
 
-const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, isDark: boolean, screenWidth: number) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -310,11 +312,11 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create
     marginBottom: 16,
   },
   summaryCard: {
-    width: (screenWidth - 44) / 2,
+    width: (Math.min(screenWidth, 480) - 44) / 2,
     backgroundColor: colors.card,
     borderRadius: StyleConstants.borderRadius.card,
     padding: 16,
-    ...StyleConstants.shadow.light,
+    ...(isDark ? StyleConstants.shadow.dark : StyleConstants.shadow.light),
   },
   summaryHeader: {
     flexDirection: 'row',
@@ -349,7 +351,7 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create
     borderRadius: StyleConstants.borderRadius.card,
     padding: 16,
     marginBottom: 16,
-    ...StyleConstants.shadow.light,
+    ...(isDark ? StyleConstants.shadow.dark : StyleConstants.shadow.light),
   },
   cardTitle: {
     fontSize: 14,

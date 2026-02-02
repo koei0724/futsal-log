@@ -25,6 +25,8 @@ export interface ThemeColors {
   match: string
   plab: string
   other: string
+  teamkakao: string
+  lesson: string
 
   // Result colors
   win: string
@@ -36,76 +38,80 @@ export interface ThemeColors {
   saturday: string
 }
 
-// 파스텔 다크 테마 색상
+// 다크 테마 색상 (쿨 다크)
 export const darkColors: ThemeColors = {
-  background: '#2D2A26',      // 웜 브라운
-  foreground: '#F5F0EB',
-  card: '#3A3633',
-  cardForeground: '#F5F0EB',
-  primary: '#8EDAD0',         // 파스텔 민트
-  primaryForeground: '#2D2A26',
-  secondary: '#4A4643',
-  secondaryForeground: '#F5F0EB',
-  muted: '#3A3633',
-  mutedForeground: '#A8A29E',
-  accent: '#4A4643',
-  accentForeground: '#F5F0EB',
-  destructive: '#F5A9A9',     // 파스텔 코랄
-  destructiveForeground: '#2D2A26',
-  border: '#4A4643',
-  input: '#3A3633',
-  ring: '#8EDAD0',
+  background: '#111827',      // 쿨 다크
+  foreground: '#F9FAFB',
+  card: '#1F2937',
+  cardForeground: '#F9FAFB',
+  primary: '#93C5FD',         // 파스텔 블루
+  primaryForeground: '#111827',
+  secondary: '#374151',
+  secondaryForeground: '#F9FAFB',
+  muted: '#1F2937',
+  mutedForeground: '#9CA3AF',
+  accent: '#374151',
+  accentForeground: '#F9FAFB',
+  destructive: '#FCA5A5',     // 파스텔 레드
+  destructiveForeground: '#111827',
+  border: '#374151',
+  input: '#1F2937',
+  ring: '#93C5FD',
 
   // Activity type colors (파스텔)
-  training: '#FFD4A3',        // 피치
-  match: '#A8E6CF',           // 민트 그린
-  plab: '#DDA0DD',            // 라벤더
-  other: '#C4B8E0',           // 소프트 퍼플
+  training: '#FDE68A',        // 파스텔 옐로
+  match: '#A7F3D0',           // 파스텔 그린
+  plab: '#C4B5FD',            // 파스텔 바이올렛
+  other: '#E9D5FF',           // 소프트 퍼플
+  teamkakao: '#FDBA74',       // 파스텔 오렌지
+  lesson: '#67E8F9',          // 파스텔 시안
 
   // Result colors (파스텔)
-  win: '#A8E6CF',
-  lose: '#F5A9A9',
-  draw: '#FFE4B5',
+  win: '#A7F3D0',
+  lose: '#FCA5A5',
+  draw: '#FDE68A',
 
   // Weekend colors
-  sunday: '#F5A9A9',
-  saturday: '#A0C4E8',
+  sunday: '#FCA5A5',
+  saturday: '#93C5FD',
 }
 
-// 파스텔 라이트 테마 색상
+// 라이트 테마 색상 (화이트 & 파스텔)
 export const lightColors: ThemeColors = {
-  background: '#FFF9F5',      // 크림 베이지
-  foreground: '#4A4A4A',      // 소프트 차콜
+  background: '#FFFFFF',      // 순백
+  foreground: '#374151',      // 쿨 차콜
   card: '#FFFFFF',
-  cardForeground: '#4A4A4A',
-  primary: '#7ECEC0',         // 민트
+  cardForeground: '#374151',
+  primary: '#93C5FD',         // 파스텔 블루
   primaryForeground: '#FFFFFF',
-  secondary: '#F5EDE6',
-  secondaryForeground: '#4A4A4A',
-  muted: '#F5EDE6',
-  mutedForeground: '#8B8B8B',
-  accent: '#F5EDE6',
-  accentForeground: '#4A4A4A',
-  destructive: '#F5A9A9',     // 코랄
+  secondary: '#F3F4F6',
+  secondaryForeground: '#374151',
+  muted: '#F3F4F6',
+  mutedForeground: '#9CA3AF',
+  accent: '#F3F4F6',
+  accentForeground: '#374151',
+  destructive: '#FCA5A5',     // 파스텔 레드
   destructiveForeground: '#FFFFFF',
-  border: '#E8DFD6',
-  input: '#F5EDE6',
-  ring: '#7ECEC0',
+  border: '#E5E7EB',
+  input: '#F3F4F6',
+  ring: '#93C5FD',
 
   // Activity type colors (파스텔)
-  training: '#FFD4A3',        // 피치
-  match: '#A8E6CF',           // 민트 그린
-  plab: '#DDA0DD',            // 라벤더
-  other: '#C4B8E0',           // 소프트 퍼플
+  training: '#FDE68A',        // 파스텔 옐로
+  match: '#A7F3D0',           // 파스텔 그린
+  plab: '#C4B5FD',            // 파스텔 바이올렛
+  other: '#E9D5FF',           // 소프트 퍼플
+  teamkakao: '#FDBA74',       // 파스텔 오렌지
+  lesson: '#67E8F9',          // 파스텔 시안
 
   // Result colors (파스텔)
-  win: '#A8E6CF',
-  lose: '#F5A9A9',
-  draw: '#FFE4B5',
+  win: '#A7F3D0',
+  lose: '#FCA5A5',
+  draw: '#FDE68A',
 
   // Weekend colors
-  sunday: '#F5A9A9',
-  saturday: '#A0C4E8',
+  sunday: '#FCA5A5',
+  saturday: '#93C5FD',
 }
 
 // 스타일 상수
@@ -118,17 +124,17 @@ export const StyleConstants = {
   },
   shadow: {
     light: {
-      shadowColor: '#D4C4B5',
-      shadowOffset: { width: 2, height: 4 },
-      shadowOpacity: 0.12,
-      shadowRadius: 10,
+      shadowColor: '#9CA3AF',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
       elevation: 4,
     },
     dark: {
       shadowColor: '#000000',
-      shadowOffset: { width: 2, height: 4 },
+      shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.3,
-      shadowRadius: 10,
+      shadowRadius: 8,
       elevation: 4,
     },
   },
