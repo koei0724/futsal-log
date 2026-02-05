@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Platform,
   Image,
+  Alert,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter, useLocalSearchParams } from 'expo-router'
@@ -15,25 +16,32 @@ import { ArrowLeft, MapPin } from 'lucide-react-native'
 import { DatePicker } from '@/components/ui/DatePicker'
 import type { ActivityType } from '@/lib/types'
 import { activityIconImages } from '@/lib/activityIcons'
+import { useActivities } from '@/lib/ActivityContext'
+import { useCustomTypes } from '@/lib/CustomTypesContext'
 import { useColors, useTheme } from '@/lib/ThemeContext'
 import { StyleConstants, type ThemeColors } from '@/constants/Colors'
 
 export default function NewRecordScreen() {
   const router = useRouter()
-  const params = useLocalSearchParams<{ date?: string }>()
+  const params = useLocalSearchParams<{ date?: string; id?: string }>()
+  const { addActivity, updateActivity, getActivityById } = useActivities()
+  const { getEnabledTypes } = useCustomTypes()
   const colors = useColors()
   const { isDark } = useTheme()
   const styles = createStyles(colors, isDark)
 
-  // 활동 유형별 배경색/테두리: 블루 / 핑크 / 옐로
-  const activityTypes: { type: ActivityType; label: string; borderColor: string; bgColor: string }[] = [
-    { type: 'training', label: '훈련', borderColor: '#93C5FD', bgColor: '#93C5FD18' },
-    { type: 'match', label: '경기', borderColor: '#F9A8D4', bgColor: '#FFF8FC' },
-    { type: 'plab', label: '플랩', borderColor: '#F9A8D4', bgColor: '#FFF8FC' },
-    { type: 'other', label: '뒷연습', borderColor: '#FDE68A', bgColor: '#FFFEF8' },
-    { type: 'teamkakao', label: '팀카카오', borderColor: '#93C5FD', bgColor: '#93C5FD18' },
-    { type: 'lesson', label: '개인레슨', borderColor: '#93C5FD', bgColor: '#93C5FD18' },
-  ]
+  // Edit mode detection
+  const isEditMode = !!params.id
+  const existingActivity = isEditMode ? getActivityById(params.id!) : null
+
+  // 활성화된 활동 유형 가져오기
+  const activityTypes = getEnabledTypes().map(type => ({
+    type: type.id as ActivityType,
+    label: type.label,
+    iconName: type.iconName,
+    borderColor: type.borderColor,
+    bgColor: type.bgColor,
+  }))
 
   const matchTypes = [
     { value: 'tournament', label: '대회' },
@@ -41,58 +49,114 @@ export default function NewRecordScreen() {
     { value: 'plab', label: '플랩' },
   ]
 
-  const [activityType, setActivityType] = useState<ActivityType>('training')
-  const [date, setDate] = useState(new Date())
+  const [activityType, setActivityType] = useState<ActivityType>(existingActivity?.type || 'training')
+  const [date, setDate] = useState(existingActivity ? new Date(existingActivity.date) : new Date())
   const [showDatePicker, setShowDatePicker] = useState(false)
-  const [title, setTitle] = useState('')
-  const [location, setLocation] = useState('')
+  const [title, setTitle] = useState(existingActivity?.title || '')
+  const [location, setLocation] = useState(existingActivity?.location || '')
 
   // Training fields
-  const [trainingTopic, setTrainingTopic] = useState('')
-  const [lessonsLearned, setLessonsLearned] = useState('')
-  const [effortScore, setEffortScore] = useState(3)
-  const [kptKeep, setKptKeep] = useState('')
-  const [kptProblem, setKptProblem] = useState('')
-  const [kptTry, setKptTry] = useState('')
+  const [trainingTopic, setTrainingTopic] = useState(existingActivity?.trainingTopic || '')
+  const [lessonsLearned, setLessonsLearned] = useState(existingActivity?.lessonsLearned || '')
+  const [effortScore, setEffortScore] = useState(existingActivity?.effortScore || 3)
+  const [kptKeep, setKptKeep] = useState(existingActivity?.kpt?.keep || '')
+  const [kptProblem, setKptProblem] = useState(existingActivity?.kpt?.problem || '')
+  const [kptTry, setKptTry] = useState(existingActivity?.kpt?.try || '')
 
   // Match fields
-  const [matchType, setMatchType] = useState('plab')
-  const [result, setResult] = useState<'win' | 'lose' | 'draw'>('win')
-  const [teamScore, setTeamScore] = useState(0)
-  const [opponentScore, setOpponentScore] = useState(0)
-  const [goals, setGoals] = useState(0)
-  const [assists, setAssists] = useState(0)
-  const [goodPoints, setGoodPoints] = useState('')
-  const [badPoints, setBadPoints] = useState('')
-  const [tacticalNotes, setTacticalNotes] = useState('')
-  const [videoUrl, setVideoUrl] = useState('')
+  const [matchType, setMatchType] = useState(existingActivity?.matchType || 'plab')
+  const [result, setResult] = useState<'win' | 'lose' | 'draw'>(existingActivity?.result || 'win')
+  const [teamScore, setTeamScore] = useState(existingActivity?.score?.team || 0)
+  const [opponentScore, setOpponentScore] = useState(existingActivity?.score?.opponent || 0)
+  const [goals, setGoals] = useState(existingActivity?.personalStats?.goals || 0)
+  const [assists, setAssists] = useState(existingActivity?.personalStats?.assists || 0)
+  const [goodPoints, setGoodPoints] = useState(existingActivity?.goodPoints || '')
+  const [badPoints, setBadPoints] = useState(existingActivity?.badPoints || '')
+  const [tacticalNotes, setTacticalNotes] = useState(existingActivity?.tacticalNotes || '')
+  const [videoUrl, setVideoUrl] = useState(existingActivity?.videoUrl || '')
 
   useEffect(() => {
-    if (params.date) {
+    if (!isEditMode && params.date) {
       setDate(new Date(params.date))
     }
-  }, [params.date])
+  }, [params.date, isEditMode])
 
-  const handleSubmit = () => {
-    console.log('[RN] Submitting record:', {
-      activityType,
-      date: date.toISOString().split('T')[0],
-      title,
-      location,
-      trainingTopic,
-      lessonsLearned,
-      effortScore,
-      kpt: { keep: kptKeep, problem: kptProblem, try: kptTry },
-      matchType,
-      result,
-      score: { team: teamScore, opponent: opponentScore },
-      personalStats: { goals, assists },
-      goodPoints,
-      badPoints,
-      tacticalNotes,
-      videoUrl,
-    })
-    router.back()
+  const handleSubmit = async () => {
+    const logPrefix = isEditMode ? '[EDIT RECORD]' : '[NEW RECORD]'
+    console.log(`${logPrefix} Submit started`)
+    console.log(`${logPrefix} Title:`, title)
+    console.log(`${logPrefix} Activity Type:`, activityType)
+    console.log(`${logPrefix} Date:`, date.toISOString().split('T')[0])
+
+    // Validation
+    if (!title.trim()) {
+      console.error(`${logPrefix} Validation failed: No title`)
+      Alert.alert('오류', '제목을 입력해주세요.')
+      return
+    }
+
+    try {
+      const activityData: any = {
+        type: activityType,
+        date: date.toISOString().split('T')[0],
+        title,
+        location: location || undefined,
+      }
+
+      // Add training-specific fields
+      if (activityType === 'training' || activityType === 'lesson' || activityType === 'other') {
+        if (trainingTopic) activityData.trainingTopic = trainingTopic
+        if (lessonsLearned) activityData.lessonsLearned = lessonsLearned
+        if (effortScore) activityData.effortScore = effortScore
+        if (kptKeep || kptProblem || kptTry) {
+          activityData.kpt = {
+            keep: kptKeep,
+            problem: kptProblem,
+            try: kptTry,
+          }
+        }
+      }
+
+      // Add match-specific fields
+      if (activityType === 'match' || activityType === 'plab' || activityType === 'teamkakao') {
+        activityData.matchType = matchType
+        activityData.result = result
+        activityData.score = { team: teamScore, opponent: opponentScore }
+        activityData.personalStats = { goals, assists }
+        if (goodPoints) activityData.goodPoints = goodPoints
+        if (badPoints) activityData.badPoints = badPoints
+        if (tacticalNotes) activityData.tacticalNotes = tacticalNotes
+        if (videoUrl) activityData.videoUrl = videoUrl
+      }
+
+      console.log(`${logPrefix} Activity data prepared:`, activityData)
+
+      if (isEditMode) {
+        console.log(`${logPrefix} Calling updateActivity...`)
+        await updateActivity(params.id!, activityData)
+        console.log(`${logPrefix} Activity updated successfully!`)
+      } else {
+        console.log(`${logPrefix} Calling addActivity...`)
+        await addActivity(activityData)
+        console.log(`${logPrefix} Activity added successfully!`)
+      }
+
+      // Use setTimeout to ensure the success message appears
+      setTimeout(() => {
+        router.back()
+      }, 100)
+
+      if (Platform.OS === 'web') {
+        console.log(`${logPrefix} ✅ 기록이 ${isEditMode ? '수정' : '저장'}되었습니다!`)
+      } else {
+        Alert.alert('성공', `기록이 ${isEditMode ? '수정' : '저장'}되었습니다.`, [
+          { text: '확인', onPress: () => router.back() }
+        ])
+      }
+    } catch (error) {
+      console.error(`${logPrefix} Failed to save activity:`, error)
+      Alert.alert('오류', `기록을 ${isEditMode ? '수정' : '저장'}하는데 실패했습니다.`)
+    }
   }
 
   const formatDate = (d: Date) => {
@@ -114,7 +178,7 @@ export default function NewRecordScreen() {
           <Pressable onPress={() => router.back()} style={styles.backButton}>
             <ArrowLeft color={colors.foreground} size={20} />
           </Pressable>
-          <Text style={styles.headerTitle}>기록 추가</Text>
+          <Text style={styles.headerTitle}>{isEditMode ? '기록 수정' : '기록 추가'}</Text>
           <View style={{ width: 36 }} />
         </View>
 
@@ -126,23 +190,25 @@ export default function NewRecordScreen() {
           {/* Activity Type Selection */}
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>활동 유형</Text>
-            <View style={styles.activityTypes}>
-              {activityTypes.map((item) => (
-                <Pressable
-                  key={item.type}
-                  onPress={() => setActivityType(item.type)}
-                  style={[
-                    styles.activityTypeButton,
-                    activityType === item.type
-                      ? { borderColor: item.borderColor, backgroundColor: item.bgColor }
-                      : { borderColor: colors.border, backgroundColor: colors.card },
-                  ]}
-                >
-                  <Image source={activityIconImages[item.type]} style={styles.activityTypeIcon} />
-                  <Text style={styles.activityTypeLabel}>{item.label}</Text>
-                </Pressable>
-              ))}
-            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.activityTypes}>
+                {activityTypes.map((item) => (
+                  <Pressable
+                    key={item.type}
+                    onPress={() => setActivityType(item.type)}
+                    style={[
+                      styles.activityTypeButton,
+                      activityType === item.type
+                        ? { borderColor: item.borderColor, backgroundColor: item.bgColor }
+                        : { borderColor: colors.border, backgroundColor: colors.card },
+                    ]}
+                  >
+                    <Image source={activityIconImages[item.iconName]} style={styles.activityTypeIcon} />
+                    <Text style={styles.activityTypeLabel}>{item.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </ScrollView>
           </View>
 
           {/* Basic Info */}
@@ -195,7 +261,7 @@ export default function NewRecordScreen() {
           </View>
 
           {/* Training Mode Fields */}
-          {activityType === 'training' && (
+          {(activityType === 'training' || activityType === 'lesson' || activityType === 'other') && (
             <>
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>훈련 내용</Text>
@@ -295,6 +361,27 @@ export default function NewRecordScreen() {
                     multiline
                     textAlignVertical="top"
                   />
+                </View>
+              </View>
+
+              {/* Video for Training */}
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>영상 첨부</Text>
+
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>YouTube/Vimeo 링크</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="https://youtube.com/watch?v=..."
+                    placeholderTextColor={colors.mutedForeground}
+                    value={videoUrl}
+                    onChangeText={setVideoUrl}
+                    autoCapitalize="none"
+                    keyboardType="url"
+                  />
+                  <Text style={[styles.fieldLabel, { fontSize: 12, marginTop: 8 }]}>
+                    💡 영상을 첨부하면 타임라인 댓글로 궁금한 점을 기록할 수 있습니다
+                  </Text>
                 </View>
               </View>
             </>
@@ -521,7 +608,7 @@ export default function NewRecordScreen() {
 
           {/* Submit Button */}
           <Pressable style={styles.submitButton} onPress={handleSubmit}>
-            <Text style={styles.submitButtonText}>기록 저장</Text>
+            <Text style={styles.submitButtonText}>{isEditMode ? '수정 완료' : '기록 저장'}</Text>
           </Pressable>
         </ScrollView>
       </ContentWrapper>
@@ -571,15 +658,15 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create
     gap: 8,
   },
   activityTypeButton: {
-    flex: 1,
+    minWidth: 100,
     alignItems: 'center',
     padding: 12,
     borderRadius: StyleConstants.borderRadius.button,
     borderWidth: 2,
   },
   activityTypeIcon: {
-    width: 84,
-    height: 84,
+    width: 64,
+    height: 64,
     marginBottom: 4,
   },
   activityTypeLabel: {

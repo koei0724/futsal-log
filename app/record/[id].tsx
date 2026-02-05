@@ -1,19 +1,14 @@
 import React from 'react'
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native'
+import { View, Text, ScrollView, Pressable, StyleSheet, Alert, Platform } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { ArrowLeft, MapPin, Calendar as CalendarIcon, Trophy, Target, Edit } from 'lucide-react-native'
+import { ArrowLeft, MapPin, Calendar as CalendarIcon, Trophy, Target, Edit, Trash2 } from 'lucide-react-native'
 import { VideoPlayer } from '@/components/futsal'
-import { getActivityById } from '@/lib/mock-data'
+import { useActivities } from '@/lib/ActivityContext'
+import { useCustomTypes } from '@/lib/CustomTypesContext'
+import type { VideoComment } from '@/lib/types'
 import { useColors, useTheme } from '@/lib/ThemeContext'
 import { StyleConstants, type ThemeColors } from '@/constants/Colors'
-
-const typeLabels: Record<string, string> = {
-  training: '훈련',
-  match: '경기',
-  plab: '플랩',
-  other: '기타',
-}
 
 const resultLabels: Record<string, string> = {
   win: '승리',
@@ -39,10 +34,16 @@ function formatDate(dateStr: string) {
 export default function RecordDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const router = useRouter()
+  const { getActivityById, deleteActivity, updateActivity } = useActivities()
+  const { getTypeById } = useCustomTypes()
   const colors = useColors()
   const { isDark } = useTheme()
   const styles = createStyles(colors, isDark)
   const activity = getActivityById(id || '')
+
+  // 커스텀 타입 정보 가져오기
+  const customType = activity ? getTypeById(activity.type) : null
+  const typeLabel = customType?.label || activity?.type || '기타'
 
   if (!activity) {
     return (
@@ -57,8 +58,77 @@ export default function RecordDetailScreen() {
     )
   }
 
-  const handleAddComment = (timestamp: number, content: string) => {
-    console.log('[RN] Adding comment:', { timestamp, content })
+  const handleAddComment = async (timestamp: number, content: string) => {
+    console.log('[RECORD DETAIL] Adding comment:', { timestamp, content })
+
+    if (!activity) return
+
+    try {
+      const newComment: VideoComment = {
+        id: `comment-${Date.now()}`,
+        timestamp,
+        content,
+        authorId: 'me',
+        authorName: '나',
+        createdAt: new Date().toISOString(),
+      }
+
+      const updatedComments = [...(activity.comments || []), newComment]
+
+      await updateActivity(id || '', {
+        comments: updatedComments,
+      })
+
+      console.log('[RECORD DETAIL] ✅ 댓글이 추가되었습니다!')
+
+      if (Platform.OS === 'web') {
+        console.log('[RECORD DETAIL] 💬 댓글:', content)
+      }
+    } catch (error) {
+      console.error('[RECORD DETAIL] Failed to add comment:', error)
+      if (Platform.OS === 'web') {
+        alert('댓글을 추가하는데 실패했습니다.')
+      } else {
+        Alert.alert('오류', '댓글을 추가하는데 실패했습니다.')
+      }
+    }
+  }
+
+  const handleDelete = async () => {
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('정말로 이 기록을 삭제하시겠습니까?')
+      if (confirmed) {
+        try {
+          await deleteActivity(id || '')
+          console.log('[RECORD DETAIL] ✅ 기록이 삭제되었습니다!')
+          router.back()
+        } catch (error) {
+          console.error('[RECORD DETAIL] Failed to delete activity:', error)
+          alert('기록을 삭제하는데 실패했습니다.')
+        }
+      }
+    } else {
+      Alert.alert(
+        '기록 삭제',
+        '정말로 이 기록을 삭제하시겠습니까?',
+        [
+          { text: '취소', style: 'cancel' },
+          {
+            text: '삭제',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await deleteActivity(id || '')
+                router.back()
+              } catch (error) {
+                console.error('Failed to delete activity:', error)
+                Alert.alert('오류', '기록을 삭제하는데 실패했습니다.')
+              }
+            },
+          },
+        ]
+      )
+    }
   }
 
   // 타입별 색상
@@ -75,13 +145,18 @@ export default function RecordDetailScreen() {
           </Pressable>
           <View style={styles.typeBadge}>
             <View style={[styles.typeIndicator, { backgroundColor: typeColor }]} />
-            <Text style={styles.typeLabel}>{typeLabels[activity.type]}</Text>
+            <Text style={styles.typeLabel}>{typeLabel}</Text>
           </View>
         </View>
 
-        <Pressable style={styles.editButton}>
-          <Edit color={colors.foreground} size={20} />
-        </Pressable>
+        <View style={styles.headerRight}>
+          <Pressable style={styles.editButton} onPress={() => router.push(`/record/new?id=${id}`)}>
+            <Edit color={colors.foreground} size={20} />
+          </Pressable>
+          <Pressable style={styles.deleteButton} onPress={handleDelete}>
+            <Trash2 color={colors.lose} size={20} />
+          </Pressable>
+        </View>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -200,7 +275,7 @@ export default function RecordDetailScreen() {
         )}
 
         {/* Training specific content */}
-        {activity.type === 'training' && (
+        {(activity.type === 'training' || activity.type === 'lesson' || activity.type === 'other') && (
           <>
             {/* Training info */}
             <View style={styles.card}>
@@ -290,6 +365,21 @@ export default function RecordDetailScreen() {
                 )}
               </View>
             )}
+
+            {/* Video Player for Training */}
+            {activity.videoUrl && (
+              <View style={styles.card}>
+                <View style={styles.cardTitleRow}>
+                  <Trophy color={colors.primary} size={16} />
+                  <Text style={styles.cardTitle}>훈련 영상</Text>
+                </View>
+                <VideoPlayer
+                  videoUrl={activity.videoUrl}
+                  comments={activity.comments || []}
+                  onAddComment={handleAddComment}
+                />
+              </View>
+            )}
           </>
         )}
 
@@ -332,6 +422,11 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create
     alignItems: 'center',
     gap: 12,
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   backButton: {
     padding: 8,
   },
@@ -350,6 +445,9 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create
     color: colors.mutedForeground,
   },
   editButton: {
+    padding: 8,
+  },
+  deleteButton: {
     padding: 8,
   },
   content: {
