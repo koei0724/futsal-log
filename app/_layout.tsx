@@ -4,6 +4,8 @@ import { StatusBar } from 'expo-status-bar'
 import { View, Platform, StyleSheet } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { ThemeProvider, useTheme } from '@/lib/ThemeContext'
+import { ActivityProvider } from '@/lib/ActivityContext'
+import { CustomTypesProvider } from '@/lib/CustomTypesContext'
 
 function RootLayoutContent() {
   const { isDark, colors } = useTheme()
@@ -51,7 +53,11 @@ function RootLayoutContent() {
 export default function RootLayout() {
   return (
     <ThemeProvider>
-      <RootLayoutContent />
+      <CustomTypesProvider>
+        <ActivityProvider>
+          <RootLayoutContent />
+        </ActivityProvider>
+      </CustomTypesProvider>
     </ThemeProvider>
   )
 }

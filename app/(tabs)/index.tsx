@@ -1,26 +1,41 @@
 import React, { useState, useMemo, useCallback, useRef } from 'react'
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native'
+import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { X } from 'lucide-react-native'
 import { Calendar, ActivityCard, FloatingButton } from '@/components/futsal'
 import { BottomSheetWrapper, type BottomSheetWrapperRef } from '@/components/ui/BottomSheetWrapper'
-import { mockActivities, mockMonthlyStats } from '@/lib/mock-data'
+import { useActivities } from '@/lib/ActivityContext'
 import { useColors, useTheme } from '@/lib/ThemeContext'
 import { StyleConstants, type ThemeColors } from '@/constants/Colors'
 
 export default function HomeScreen() {
   const router = useRouter()
+  const { activities, isLoading } = useActivities()
   const colors = useColors()
   const { isDark } = useTheme()
   const styles = createStyles(colors, isDark)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const bottomSheetRef = useRef<BottomSheetWrapperRef>(null)
 
+  // Calculate monthly stats
+  const monthlyStats = useMemo(() => {
+    const now = new Date()
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    const monthActivities = activities.filter(a => a.date.startsWith(currentMonth))
+    const matchActivities = monthActivities.filter(a => a.type === 'match' || a.type === 'plab' || a.type === 'teamkakao')
+
+    return {
+      totalGoals: matchActivities.reduce((sum, a) => sum + (a.personalStats?.goals || 0), 0),
+      totalAssists: matchActivities.reduce((sum, a) => sum + (a.personalStats?.assists || 0), 0),
+      totalActivities: monthActivities.length,
+    }
+  }, [activities])
+
   const selectedActivities = useMemo(() => {
     if (!selectedDate) return []
-    return mockActivities.filter((a) => a.date === selectedDate)
-  }, [selectedDate])
+    return activities.filter((a) => a.date === selectedDate)
+  }, [selectedDate, activities])
 
   const handleDateSelect = useCallback((date: string) => {
     setSelectedDate((prev) => {
@@ -51,6 +66,17 @@ export default function HomeScreen() {
     return `${month}월 ${day}일 (${weekday})`
   }
 
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.headerSubtitle, { marginTop: 16 }]}>데이터를 불러오는 중...</Text>
+        </View>
+      </SafeAreaView>
+    )
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
@@ -66,19 +92,19 @@ export default function HomeScreen() {
         <View style={styles.quickStats}>
           <View style={styles.statItem}>
             <Text style={[styles.statValue, { color: colors.primary }]}>
-              {mockMonthlyStats.totalGoals}
+              {monthlyStats.totalGoals}
             </Text>
             <Text style={styles.statLabel}>득점</Text>
           </View>
           <View style={styles.statItem}>
             <Text style={[styles.statValue, { color: colors.foreground }]}>
-              {mockMonthlyStats.totalAssists}
+              {monthlyStats.totalAssists}
             </Text>
             <Text style={styles.statLabel}>도움</Text>
           </View>
           <View style={styles.statItem}>
             <Text style={styles.statValue}>
-              {mockMonthlyStats.totalActivities}
+              {monthlyStats.totalActivities}
             </Text>
             <Text style={styles.statLabel}>활동</Text>
           </View>
@@ -88,7 +114,7 @@ export default function HomeScreen() {
       {/* Calendar */}
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <Calendar
-          activities={mockActivities}
+          activities={activities}
           onDateSelect={handleDateSelect}
           onDateLongPress={handleDateLongPress}
           selectedDate={selectedDate}

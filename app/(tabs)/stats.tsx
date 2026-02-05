@@ -1,13 +1,14 @@
 import React, { useMemo } from 'react'
-import { View, Text, ScrollView, StyleSheet, useWindowDimensions } from 'react-native'
+import { View, Text, ScrollView, StyleSheet, useWindowDimensions, ActivityIndicator } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Trophy, Target, Activity, TrendingUp } from 'lucide-react-native'
 import { PieChart, BarChart, LineChart } from 'react-native-gifted-charts'
-import { mockActivities } from '@/lib/mock-data'
+import { useActivities } from '@/lib/ActivityContext'
 import { useColors, useTheme } from '@/lib/ThemeContext'
 import { StyleConstants, type ThemeColors } from '@/constants/Colors'
 
 export default function StatsScreen() {
+  const { activities, isLoading } = useActivities()
   const colors = useColors()
   const { isDark } = useTheme()
   const { width: screenWidth } = useWindowDimensions()
@@ -23,8 +24,8 @@ export default function StatsScreen() {
   }
 
   const stats = useMemo(() => {
-    const trainingActivities = mockActivities.filter((a) => a.type === 'training')
-    const matchActivities = mockActivities.filter((a) => a.type === 'match' || a.type === 'plab')
+    const trainingActivities = activities.filter((a) => a.type === 'training' || a.type === 'lesson' || a.type === 'other')
+    const matchActivities = activities.filter((a) => a.type === 'match' || a.type === 'plab' || a.type === 'teamkakao')
 
     const totalGoals = matchActivities.reduce(
       (sum, a) => sum + (a.personalStats?.goals || 0),
@@ -46,7 +47,7 @@ export default function StatsScreen() {
     const losses = matchActivities.filter((a) => a.result === 'lose').length
 
     return {
-      totalActivities: mockActivities.length,
+      totalActivities: activities.length,
       trainingCount: trainingActivities.length,
       matchCount: matchActivities.length,
       totalGoals,
@@ -57,43 +58,54 @@ export default function StatsScreen() {
       losses,
       winRate: matchActivities.length > 0 ? Math.round((wins / matchActivities.length) * 100) : 0,
     }
-  }, [])
+  }, [activities])
 
   const pieData = useMemo(() => {
     const counts = {
-      training: mockActivities.filter((a) => a.type === 'training').length,
-      match: mockActivities.filter((a) => a.type === 'match').length,
-      plab: mockActivities.filter((a) => a.type === 'plab').length,
+      training: activities.filter((a) => a.type === 'training' || a.type === 'lesson' || a.type === 'other').length,
+      match: activities.filter((a) => a.type === 'match').length,
+      plab: activities.filter((a) => a.type === 'plab' || a.type === 'teamkakao').length,
     }
     return [
       { value: counts.training, color: CHART_COLORS.training, text: '훈련' },
       { value: counts.match, color: CHART_COLORS.match, text: '경기' },
       { value: counts.plab, color: CHART_COLORS.plab, text: '플랩' },
     ]
-  }, [CHART_COLORS])
+  }, [CHART_COLORS, activities])
 
   const effortData = useMemo(() => {
-    const trainingActivities = mockActivities.filter(
-      (a) => a.type === 'training' && a.effortScore
+    const trainingActivities = activities.filter(
+      (a) => (a.type === 'training' || a.type === 'lesson' || a.type === 'other') && a.effortScore
     )
-    return trainingActivities.map((a) => ({
+    return trainingActivities.slice(-10).map((a) => ({
       value: a.effortScore || 0,
       label: a.date.slice(8),
       dataPointText: String(a.effortScore),
     }))
-  }, [])
+  }, [activities])
 
   const goalsData = useMemo(() => {
-    const matchActivities = mockActivities.filter((a) => a.type === 'match' || a.type === 'plab')
-    return matchActivities.map((a) => ({
+    const matchActivities = activities.filter((a) => a.type === 'match' || a.type === 'plab' || a.type === 'teamkakao')
+    return matchActivities.slice(-10).map((a) => ({
       value: a.personalStats?.goals || 0,
       label: a.date.slice(8),
       frontColor: CHART_COLORS.primary,
     }))
-  }, [CHART_COLORS])
+  }, [CHART_COLORS, activities])
 
   // Clamp chart width for responsive layout
   const chartWidth = Math.min(screenWidth, 480) - 80
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.headerSubtitle, { marginTop: 16 }]}>통계를 계산하는 중...</Text>
+        </View>
+      </SafeAreaView>
+    )
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
