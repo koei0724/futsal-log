@@ -15,6 +15,7 @@
     "clsx": "^2.1.1",
     "expo": "~54.0.32",
     "expo-av": "^16.0.8",
+    "expo-image-picker": "^17.0.10",
     "expo-linear-gradient": "~15.0.8",
     "expo-linking": "~8.0.2",
     "expo-router": "^6.0.22",
@@ -23,7 +24,6 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
-
     "react-native-gesture-handler": "^2.30.0",
     "react-native-gifted-charts": "^1.4.71",
     "react-native-reanimated": "^4.2.1",

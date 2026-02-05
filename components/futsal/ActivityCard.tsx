@@ -3,20 +3,12 @@ import { View, Text, Pressable, StyleSheet } from 'react-native'
 import { useRouter } from 'expo-router'
 import { MapPin, Trophy, Target, Video } from 'lucide-react-native'
 import type { Activity } from '@/lib/types'
+import { useCustomTypes } from '@/lib/CustomTypesContext'
 import { useColors } from '@/lib/ThemeContext'
 import { StyleConstants, type ThemeColors } from '@/constants/Colors'
 
 interface ActivityCardProps {
   activity: Activity
-}
-
-const typeLabels: Record<string, string> = {
-  training: '훈련',
-  match: '경기',
-  plab: '플랩',
-  other: '뒷연습',
-  teamkakao: '팀카카오',
-  lesson: '개인레슨',
 }
 
 const resultLabels: Record<string, string> = {
@@ -27,6 +19,7 @@ const resultLabels: Record<string, string> = {
 
 export function ActivityCard({ activity }: ActivityCardProps) {
   const router = useRouter()
+  const { getTypeById } = useCustomTypes()
   const colors = useColors()
   const styles = createStyles(colors)
 
@@ -34,8 +27,12 @@ export function ActivityCard({ activity }: ActivityCardProps) {
     router.push(`/record/${activity.id}`)
   }
 
-  // 타입별 색상 가져오기
-  const typeColor = colors[activity.type as keyof ThemeColors] as string || colors.other
+  // 타입별 색상 및 라벨 가져오기
+  const customType = getTypeById(activity.type)
+  const typeLabel = customType?.label || activity.type
+  const activityColor = customType
+    ? { borderColor: customType.borderColor, bgColor: customType.bgColor }
+    : { borderColor: '#93C5FD', bgColor: '#93C5FD18' }
   const resultColor = activity.result ? colors[activity.result as keyof ThemeColors] as string : undefined
 
   return (
@@ -43,14 +40,17 @@ export function ActivityCard({ activity }: ActivityCardProps) {
       onPress={handlePress}
       style={({ pressed }) => [
         styles.card,
-        { borderLeftColor: typeColor },
+        {
+          borderLeftColor: activityColor.borderColor,
+          backgroundColor: activityColor.bgColor,
+        },
         { opacity: pressed ? 0.8 : 1 },
       ]}
     >
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.typeLabel}>{typeLabels[activity.type]}</Text>
+          <Text style={styles.typeLabel}>{typeLabel}</Text>
           <Text style={styles.title}>{activity.title}</Text>
         </View>
 
@@ -99,7 +99,7 @@ export function ActivityCard({ activity }: ActivityCardProps) {
       )}
 
       {/* Training specific info */}
-      {activity.type === 'training' && (
+      {(activity.type === 'training' || activity.type === 'lesson' || activity.type === 'other') && (
         <View style={styles.trainingInfo}>
           {activity.trainingTopic && (
             <View style={styles.topicRow}>

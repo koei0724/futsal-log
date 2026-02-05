@@ -1,5 +1,19 @@
 // Activity types for Futsal Log
-export type ActivityType = 'training' | 'match' | 'plab' | 'other' | 'teamkakao' | 'lesson'
+export type ActivityType = 'training' | 'match' | 'plab' | 'other' | 'teamkakao' | 'lesson' | string
+
+export type IconName = 'training' | 'match' | 'plab' | 'other' | 'teamkakao' | 'lesson' | 'icon1' | 'icon2' | 'icon3' | 'ball' | 'clap' | 'flag'
+
+export type RecordType = 'training' | 'match'
+
+export interface CustomActivityType {
+  id: string
+  label: string
+  iconName: IconName
+  borderColor: string
+  bgColor: string
+  enabled: boolean
+  recordType: RecordType
+}
 
 export interface Activity {
   id: string

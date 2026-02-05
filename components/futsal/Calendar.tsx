@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet, Image } from 'react-native'
 import { ChevronLeft, ChevronRight } from 'lucide-react-native'
 import type { Activity, ActivityType } from '@/lib/types'
 import { activityIconImages, activityTypeLabels } from '@/lib/activityIcons'
+import { useCustomTypes } from '@/lib/CustomTypesContext'
 import { useColors } from '@/lib/ThemeContext'
 import { StyleConstants, type ThemeColors } from '@/constants/Colors'
 
@@ -39,6 +40,7 @@ export function Calendar({
   onDateLongPress,
   selectedDate,
 }: CalendarProps) {
+  const { customTypes } = useCustomTypes()
   const colors = useColors()
   const styles = createStyles(colors)
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -203,13 +205,13 @@ export function Calendar({
 
       {/* Legend */}
       <View style={styles.legend}>
-        {(Object.keys(activityIconImages) as ActivityType[]).map((type, index, arr) => (
-          <React.Fragment key={type}>
+        {customTypes.filter(t => t.enabled).map((type, index, arr) => (
+          <React.Fragment key={type.id}>
             <View style={styles.legendItem}>
               <Text style={styles.legendText}>
-                {activityTypeLabels[type]}
+                {type.label}
               </Text>
-              <Image source={activityIconImages[type]} style={styles.legendIcon} />
+              <Image source={activityIconImages[type.iconName]} style={styles.legendIcon} />
             </View>
             {index < arr.length - 1 && (
               <Text style={styles.legendDivider}>|</Text>
